@@ -85,6 +85,33 @@ def load_member_records() -> list[dict[str, Any]] | None:
         return _copy(records)
 
 
+def turn_vault_records() -> list[dict[str, Any]] | None:
+    """The app records this turn may use: the workspace set plus the acting member's own.
+
+    The member taking a hosted turn sees the workspace's GitHub connections
+    plus their own (their personal default outranks the workspace's), and
+    their own Gmail, Outlook, Drive and document accounts join the workspace's
+    Pipedream apps. Tools and the connected-integrations prompt line both read
+    this, so they never disagree. ``None`` means the vault is unavailable.
+    """
+    from integrations.pipedream import merge_member_apps
+    from integrations.webapp_vault import load_webapp_org_integrations, withdrawn_webapp_records
+
+    records = load_webapp_org_integrations()
+    if records is None:
+        return None
+    member = load_member_records()
+    if member is not None:
+        member_github = [record for record in member if record.get("service") == "github"]
+        records = [
+            record for record in records if record.get("service") != "github"
+        ] + member_github
+        records = merge_member_apps(records, member)
+    # Last, so no merge above adopts a placeholder: a service disconnected in
+    # the app hides the store's boot-time copy on the next turn.
+    return records + withdrawn_webapp_records(records)
+
+
 def member_view_stamp() -> int:
     """Changes when the acting member or their personal view changes.
 
@@ -149,19 +176,44 @@ def _fetch(*, base_url: str, org: str, actor: str, token: str) -> object:
     if not isinstance(viewer, str) or not viewer:
         # The webapp does not know this member: the workspace store already
         # holds everything they may use.
+        logger.info("[member-integrations] actor=%s is not a known member; workspace view", actor)
         return None
     records = records_from_vault_payload(payload, organization_id=org, viewer_user_id=viewer)
     if records is None:
         return None
-    return [
+    member = [
         record
         for record in records
         if str(record.get("service") or "").strip().lower() in _MEMBER_SERVICES
     ]
+    logger.info(
+        "[member-integrations] actor=%s viewer=%s personal apps=%s",
+        actor,
+        viewer,
+        _personal_app_summary(member) or "none",
+    )
+    return member
+
+
+def _personal_app_summary(records: list[dict[str, Any]]) -> str:
+    """``gmail×4, google_docs×1``: the member's own Pipedream apps, for the log only."""
+    from integrations.pipedream.connect import PERSONAL_SCOPE, parse_apps
+
+    counts: dict[str, int] = {}
+    for record in records:
+        credentials = record.get("credentials")
+        if record.get("service") != "pipedream" or not isinstance(credentials, dict):
+            continue
+        if str(credentials.get("scope") or "").strip() != PERSONAL_SCOPE:
+            continue
+        for app in parse_apps(credentials.get("apps")):
+            counts[app.service] = counts.get(app.service, 0) + 1
+    return ", ".join(f"{service}×{count}" for service, count in sorted(counts.items()))
 
 
 __all__ = [
     "load_member_records",
     "member_view_stamp",
     "reset_member_integrations_cache",
+    "turn_vault_records",
 ]
