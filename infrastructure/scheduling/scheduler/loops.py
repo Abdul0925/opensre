@@ -59,6 +59,7 @@ from infrastructure.scheduling.scheduler.storage import (
     patch_task_definitions,
     remove_task,
 )
+from infrastructure.scheduling.scheduler.task_visibility import visible_to_current_scope
 from infrastructure.scheduling.scheduler.types import Provider, ScheduledTask, TaskKind
 
 _ONBOARDING_LOOP_SOURCE = "onboarding"
@@ -334,6 +335,7 @@ def create_manual_loop(
     report: str = "",
     report_args: Mapping[str, str] | None = None,
     mode: str = LOOP_MODE_REPORT,
+    extra_params: Mapping[str, str] | None = None,
 ) -> ManualLoop:
     """Create an active recurring prompt loop.
 
@@ -341,7 +343,8 @@ def create_manual_loop(
     of a model turn; ``prompt`` then documents the loop and is the fallback
     when the builder is not installed. ``mode`` selects the tick framing:
     ``report`` produces a report body only, ``agent`` lets the tick act with
-    the tools the prompt names.
+    the tools the prompt names. ``extra_params`` (e.g. the webapp request a
+    loop was created from) is stored with the loop and never overrides it.
     """
     loop_prompt = prompt.strip()
     if not loop_prompt:
@@ -367,6 +370,7 @@ def create_manual_loop(
     )
     loop_id = uuid.uuid4().hex[:12]
     params = {
+        **dict(extra_params or {}),
         LOOP_GROUP_ID_PARAM: loop_id,
         LOOP_SOURCE_PARAM: _MANUAL_LOOP_SOURCE,
         LOOP_PROMPT_PARAM: loop_prompt,
@@ -455,9 +459,14 @@ def list_loop_summaries(
     now: datetime | None = None,
     read_only: bool = False,
 ) -> list[LoopSummary]:
-    """Return configured loops from the store, sorted with active loops first."""
+    """Return the loops the current scope may see, sorted with active loops first.
+
+    The store is process-wide: a turn bound to an organization sees only that
+    organization's loops, so a name or id never resolves to, or lists, another's.
+    """
     tasks = list_tasks(store_path, read_only=True) if read_only else list_tasks(store_path)
-    return summarize_loops(tasks, include_disabled=include_disabled, now=now)
+    visible = [task for task in tasks if visible_to_current_scope(task)]
+    return summarize_loops(visible, include_disabled=include_disabled, now=now)
 
 
 def resolve_loop_summary(
