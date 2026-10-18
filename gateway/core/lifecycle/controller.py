@@ -230,12 +230,17 @@ class GatewayController:
             budget.consume(started)
             self._credential_refresh_thread = None
         scheduled_jobs_finished = True
+        started = budget.mark()
+        scheduler_seconds = budget.remaining * SCHEDULER_STOP_BUDGET_SHARE
         if self.scheduler is not None:
-            started = budget.mark()
-            scheduler_seconds = budget.remaining * SCHEDULER_STOP_BUDGET_SHARE
             scheduled_jobs_finished = _shut_scheduler_down(self.scheduler, scheduler_seconds)
-            budget.consume(started)
             self.scheduler = None
+        if self._webapp_loop_sync is not None:
+            # Runs started from the app's Run now share the scheduled jobs' window.
+            left = max(0.0, scheduler_seconds - (budget.mark() - started))
+            runs_finished = self._webapp_loop_sync.drain_runs(left)
+            scheduled_jobs_finished = scheduled_jobs_finished and runs_finished
+        budget.consume(started)
         if self.surfaces is not None:
             stopped = self.surfaces.stop(timeout=budget.remaining) and stopped
             self.surfaces = None
@@ -314,7 +319,7 @@ class GatewayController:
         """
         from bootstrap.adapters import webapp_loop_sync
 
-        sync = webapp_loop_sync()
+        sync = webapp_loop_sync(self._scheduler_runners)
         if sync is None or self._webapp_loop_sync_thread is not None:
             return
         self._webapp_loop_sync = sync

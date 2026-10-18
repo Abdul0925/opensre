@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+import threading
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from pathlib import Path
@@ -23,11 +24,13 @@ import integrations.webapp_scheduled_loops.sync as sync_module
 from config.principal import Actor, Principal, StorageScope
 from config.scope_context import bound_storage_scope
 from infrastructure.scheduling.scheduler.loops import create_manual_loop
+from infrastructure.scheduling.scheduler.runners import SchedulerRunners
 from infrastructure.scheduling.scheduler.storage import (
     TaskStoreSnapshot,
     add_task,
     get_task,
     list_tasks,
+    record_task_success,
 )
 from infrastructure.scheduling.scheduler.types import Provider, ScheduledTask, TaskKind
 from integrations.webapp_scheduled_loops import WebappLoopSync
@@ -79,7 +82,11 @@ class _Webapp:
 
 def _sync(webapp: _Webapp) -> WebappLoopSync:
     return WebappLoopSync(
-        base_url="https://app.example", organization=_ORG, token="gateway-token", http=webapp
+        base_url="https://app.example",
+        organization=_ORG,
+        token="gateway-token",
+        http=webapp,
+        runners=SchedulerRunners(agent=lambda _payload: ""),
     )
 
 
@@ -266,3 +273,140 @@ def test_a_one_shot_reminder_never_reaches_the_tasks_page() -> None:
 
     # Assert: only the recurring loop is reported, and every row has a cron.
     assert [row["id"] for row in webapp.reports[0]] == [loop.task.id]
+
+
+def test_a_run_now_fires_a_paused_loop_once_in_the_background(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A redelivered run must not run again, and a second run waits for the first."""
+    # Arrange: a paused loop, and a run that holds until released.
+    scope = StorageScope(principal=Principal.org(_ORG), actor=Actor(id="u"))
+    with bound_storage_scope(scope):
+        created = create_manual_loop(name="Daily", prompt="Daily report.", cron="0 9 * * *")
+        sync_module.set_loop_enabled(created.task.id, enabled=False)
+    started, release = threading.Event(), threading.Event()
+    runs: list[tuple[str, bool]] = []
+
+    def run_task_now(task_id: str, _runners: SchedulerRunners, *, run_paused: bool) -> bool:
+        runs.append((task_id, run_paused))
+        started.set()
+        release.wait(timeout=10)
+        return record_task_success(task_id)
+
+    monkeypatch.setattr(sync_module, "run_task_now", run_task_now)
+    first = {"id": _REQUEST_ID, "action": "run", "loop_id": created.task.id, "payload": {}}
+    second = {**first, "id": "6c1d2e3f-0000-4000-8000-000000000009"}
+    webapp = _Webapp(pending=[first])
+    sync = _sync(webapp)
+
+    try:
+        # Act: the poll returns while the run is still going; the first ack was lost.
+        sync.sync()
+        assert started.wait(timeout=10)
+        webapp.pending = [first, second]
+        sync.sync()
+        release.set()
+        for thread in threading.enumerate():
+            if thread.name.startswith("opensre-webapp-loop-run-"):
+                thread.join(timeout=10)
+    finally:
+        release.set()
+
+    # Assert: one run of the paused loop, the redelivery re-acked, the overlap refused.
+    assert runs == [(created.task.id, True)]
+    assert [(request_id, ack["status"]) for request_id, ack in webapp.acks] == [
+        (first["id"], "applied"),
+        (first["id"], "applied"),
+        (second["id"], "failed"),
+    ]
+    stored = get_task(created.task.id)
+    assert stored is not None and not stored.enabled
+    assert webapp.reports[-1][0]["last_run"] == stored.last_run
+
+
+def _loop_run_request(request_id: str = _REQUEST_ID) -> tuple[str, dict[str, Any]]:
+    scope = StorageScope(principal=Principal.org(_ORG), actor=Actor(id="u"))
+    with bound_storage_scope(scope):
+        created = create_manual_loop(name="Daily", prompt="Daily report.", cron="0 9 * * *")
+    request = {"id": request_id, "action": "run", "loop_id": created.task.id, "payload": {}}
+    return created.task.id, request
+
+
+def _join_runs() -> None:
+    for thread in threading.enumerate():
+        if thread.name.startswith("opensre-webapp-loop-run-"):
+            thread.join(timeout=10)
+
+
+def test_a_run_now_that_cannot_be_recorded_stays_pending_and_runs_once_later(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unrecorded, a redelivered run could run twice; so it must not start at all."""
+    # Arrange: the ledger refuses the first write, then works.
+    loop_id, request = _loop_run_request()
+    runs: list[str] = []
+
+    def run_task_now(task_id: str, _runners: SchedulerRunners, *, run_paused: bool) -> bool:
+        runs.append(task_id)
+        return True
+
+    monkeypatch.setattr(sync_module, "run_task_now", run_task_now)
+    real_record = request_ledger.RequestLedger.record
+    failures = iter([True])
+
+    def record(self: request_ledger.RequestLedger, *args: Any) -> None:
+        if next(failures, False):
+            raise request_ledger.LedgerUnavailable("disk full")
+        real_record(self, *args)
+
+    monkeypatch.setattr(request_ledger.RequestLedger, "record", record)
+    webapp = _Webapp(pending=[request])
+    sync = _sync(webapp)
+
+    # Act: the first pass cannot record it; the second can.
+    sync.sync()
+    _join_runs()
+    runs_after_failed_record = list(runs)
+    acks_after_failed_record = list(webapp.acks)
+    sync.sync()
+    _join_runs()
+
+    # Assert: nothing ran or was acked until it was recorded, then one run.
+    assert runs_after_failed_record == []
+    assert acks_after_failed_record == []
+    assert runs == [loop_id]
+    assert [ack["status"] for _, ack in webapp.acks] == ["applied"]
+
+
+def test_shutdown_waits_for_a_run_now_and_leaves_later_ones_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange: a run that holds until released.
+    _, first = _loop_run_request()
+    started, release = threading.Event(), threading.Event()
+
+    def run_task_now(task_id: str, _runners: SchedulerRunners, *, run_paused: bool) -> bool:
+        started.set()
+        return release.wait(timeout=10)
+
+    monkeypatch.setattr(sync_module, "run_task_now", run_task_now)
+    webapp = _Webapp(pending=[first])
+    sync = _sync(webapp)
+    sync.sync()
+    assert started.wait(timeout=10)
+
+    try:
+        # Act: shutdown gives up while it runs, then waits for it to finish.
+        cut_short = sync.drain_runs(0.05)
+        release.set()
+        finished = sync.drain_runs(10)
+        webapp.pending = [{**first, "id": "6c1d2e3f-0000-4000-8000-00000000000a"}]
+        webapp.acks.clear()
+        sync.sync()
+    finally:
+        release.set()
+
+    # Assert: the run outlived a short drain, ended within a long one, and a run
+    # asked for during shutdown is neither run nor acked (the next gateway takes it).
+    assert (cut_short, finished) == (False, True)
+    assert webapp.acks == []
