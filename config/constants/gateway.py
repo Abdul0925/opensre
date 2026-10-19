@@ -36,6 +36,11 @@ WEBAPP_LOOP_REPORT_INTERVAL_SECONDS = 30.0
 LOOP_SYNC_ROUTE_PATH = "/v1/loops/sync"
 #: The loop-sync watcher sleeps between passes; cap its join on shutdown.
 WEBAPP_LOOP_SYNC_JOIN_TIMEOUT_SECONDS = 2.0
+#: How often a hosted gateway mirrors its knowledge to the web app and asks
+#: for Knowledge-page changes; the same fleet idle budget as the Tasks sync.
+WEBAPP_KNOWLEDGE_SYNC_INTERVAL_SECONDS = 300.0
+#: The knowledge scan and sync threads sleep between passes; cap their joins on shutdown.
+KNOWLEDGE_THREAD_JOIN_TIMEOUT_SECONDS = 2.0
 DEFAULT_MAX_CONVERSATION_LOCKS = 1024
 NEW_SESSION_MESSAGE = "Started a new session."
 #: Inbound-decision reply sentinel: rotate the session instead of replying.
@@ -122,6 +127,8 @@ __all__ = [
     "WEBAPP_LOOP_SYNC_INTERVAL_SECONDS",
     "LOOP_SYNC_ROUTE_PATH",
     "WEBAPP_LOOP_SYNC_JOIN_TIMEOUT_SECONDS",
+    "WEBAPP_KNOWLEDGE_SYNC_INTERVAL_SECONDS",
+    "KNOWLEDGE_THREAD_JOIN_TIMEOUT_SECONDS",
     "NO_ACTIVE_TURN_MESSAGE",
     "PROMPT_CONTEXT_MAX_ITEMS",
     "PROMPT_CONTEXT_VALUE_MAX_CHARS",
