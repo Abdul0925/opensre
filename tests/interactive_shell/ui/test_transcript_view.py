@@ -18,7 +18,14 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from surfaces.interactive_shell.ui.input_prompt.stdout import _TRANSIENT_END, _AppBoundStdoutProxy
+from surfaces.interactive_shell.ui.input_prompt.stdout import (
+    _DEFERRED_END,
+    _DEFERRED_START,
+    _RENDERABLE_MARKER,
+    _REPLAY_CHUNK_CHARS,
+    _TRANSIENT_END,
+    _AppBoundStdoutProxy,
+)
 from surfaces.interactive_shell.ui.streaming.console import StreamingConsole
 from surfaces.interactive_shell.ui.transcript_view import TranscriptControl, TranscriptStore
 from surfaces.interactive_shell.ui.transcript_view.store import render_rows, trim_row_padding
@@ -257,6 +264,53 @@ def test_form_defers_background_output_until_close(
     assert terminal.getvalue().index("incoming alert") > terminal.getvalue().index("\x1b[?1049l")
     if store is not None:
         assert _plain_rows(store, width=40) == ["alert details", "incoming alert"]
+
+
+def test_release_of_high_volume_deferred_output_keeps_order_in_bounded_writes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = TranscriptStore()
+    terminal = io.StringIO()
+    proxy = _proxy(store, terminal, _FakeApp(None))
+    lines = [f"background line {i:05d} {'x' * 500}\n" for i in range(4096)]  # ~2 MiB
+    # One flush batch larger than a replay chunk, right after a short one.
+    large_batch = "".join(lines[2049:2560])
+    writes: list[str] = []
+    append_text = store.append_text
+
+    def record_append(text: str, *, on_normal_screen: bool = False) -> None:
+        writes.append(text)
+        append_text(text, on_normal_screen=on_normal_screen)
+
+    monkeypatch.setattr(store, "append_text", record_append)
+    proxy._renderables[0] = Text("alert details")
+    # Drive the handler as the flush thread does: one call per queued batch.
+    proxy._write_and_flush(None, _DEFERRED_START)
+    for line in lines[:2048]:
+        proxy._write_and_flush(None, line)
+    proxy._write_and_flush(None, _RENDERABLE_MARKER.format(0))
+    proxy._write_and_flush(None, lines[2048])
+    proxy._write_and_flush(None, large_batch)
+    for line in lines[2560:]:
+        proxy._write_and_flush(None, line)
+    assert writes == []
+    assert terminal.getvalue() == ""
+
+    proxy._write_and_flush(None, _DEFERRED_END)
+    proxy.close()
+
+    assert not proxy._deferred_output
+    # Only the oversized batch exceeds a chunk, and it is written as held, uncopied.
+    assert [text for text in writes if len(text) > _REPLAY_CHUNK_CHARS] == [large_batch]
+    assert next(text for text in writes if len(text) > _REPLAY_CHUNK_CHARS) is large_batch
+    output = terminal.getvalue()
+    assert output.count("background line") == len(lines)
+    assert (
+        output.index("background line 02047")
+        < output.index("alert details")
+        < output.index("background line 02048")
+    )
+    assert _plain_rows(store, width=600, count=1) == [lines[-1].rstrip()]
 
 
 def test_output_cannot_forge_the_transient_marker() -> None:
