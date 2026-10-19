@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 from config.constants.scheduler import SCHEDULED_TASK_TRACE_KEY
+from config.credit_attribution import bound_credit_actor, credit_actor_id
 from core.agent_harness import (
     is_legacy_skill_name,
     normalize_skill_name,
@@ -19,6 +20,7 @@ from core.agent_harness import (
     resolve_scheduled_skill,
 )
 from infrastructure.observability.trace.trace_session import inherit_trace_session
+from infrastructure.scheduling.scheduler.loop_constants import LOOP_CREATED_BY_PARAM
 from infrastructure.scheduling.scheduler.loop_prompt import current_loop_prompt
 from infrastructure.scheduling.scheduler.operation_log import record_scheduler_task_operation
 from infrastructure.scheduling.scheduler.runners import SchedulerRunners
@@ -50,18 +52,29 @@ def build_message(task: ScheduledTask, runners: SchedulerRunners) -> str:
     session when there is one (the shell that started this scheduler), else
     under the task id, so ticks of one loop share one trace session. A tick
     fired from inside a turn (``/loops run``) inherits that turn's session and
-    still gains the scheduled tag and task metadata.
+    still gains the scheduled tag and task metadata. Its credits are spent for
+    the loop's creator, unless the tick runs inside a member's turn.
     """
-    with inherit_trace_session(
-        runners.host_session_id() or task.id,
-        tags=(SCHEDULED_TRACE_TAG,),
-        metadata={
-            SCHEDULED_TASK_TRACE_KEY: task.id,
-            "task_name": task.name,
-            "task_kind": task.kind.value,
-        },
+    with (
+        inherit_trace_session(
+            runners.host_session_id() or task.id,
+            tags=(SCHEDULED_TRACE_TAG,),
+            metadata={
+                SCHEDULED_TASK_TRACE_KEY: task.id,
+                "task_name": task.name,
+                "task_kind": task.kind.value,
+            },
+        ),
+        bound_credit_actor(_unattended_credit_actor(task)),
     ):
         return _build_message(task, runners)
+
+
+def _unattended_credit_actor(task: ScheduledTask) -> str | None:
+    """The loop's creator when no member's turn is running this tick, else ``None``."""
+    if credit_actor_id() is not None:
+        return None
+    return str(task.params.get(LOOP_CREATED_BY_PARAM) or "").strip() or None
 
 
 def _build_message(task: ScheduledTask, runners: SchedulerRunners) -> str:

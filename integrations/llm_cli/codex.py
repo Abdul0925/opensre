@@ -11,6 +11,7 @@ import os
 import subprocess
 
 from config.account import account_llm_route, hosted_openai_env
+from config.constants.account import OPENSRE_ACTOR_HEADER, OPENSRE_ACTOR_HEADER_ENV
 from config.constants.llm import OPENAI_API_KEY_ENV
 from integrations.llm_cli.base import CLIInvocation, CLIProbe
 from integrations.llm_cli.binary_resolver import (
@@ -118,6 +119,9 @@ def hosted_provider_overrides(base_url: str) -> list[str]:
         f'model_providers.{_HOSTED_PROVIDER}.env_key="{OPENAI_API_KEY_ENV}"',
         "-c",
         f'model_providers.{_HOSTED_PROVIDER}.wire_api="responses"',
+        # Sent only when the env var is set: the member a gateway turn is for.
+        "-c",
+        f'model_providers.{_HOSTED_PROVIDER}.env_http_headers.{OPENSRE_ACTOR_HEADER}="{OPENSRE_ACTOR_HEADER_ENV}"',
         *_HOSTED_FUNCTION_TOOLS_ONLY,
     ]
 

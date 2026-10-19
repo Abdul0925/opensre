@@ -53,6 +53,11 @@ from core.llm.transports.sdk.anthropic_cache import (
     is_cache_unsupported_error,
     strip_cache_markers,
 )
+from core.llm.transports.sdk.request_headers import (
+    RequestHeaders,
+    http_client_with_request_headers,
+    sdk_http_client_kwargs,
+)
 from core.llm.types import LLMResponse
 
 logger = logging.getLogger(__name__)
@@ -699,6 +704,7 @@ class OpenAILLMClient:
         api_key_default: str = "",
         default_headers: dict[str, str] | None = None,
         credential_resolver: Callable[[str], str] | None = None,
+        request_headers: RequestHeaders | None = None,
     ) -> None:
         self._credential_resolver = credential_resolver or provider_credentials.resolve_llm_api_key
         api_key = self._credential_resolver(api_key_env) or api_key_default
@@ -707,6 +713,7 @@ class OpenAILLMClient:
         self._base_url = base_url
         self._api_key_env = api_key_env
         self._default_headers = default_headers
+        self._http_client = http_client_with_request_headers(request_headers)
         self._provider_label = api_key_env.removesuffix("_API_KEY").replace("_", " ").title()
         self._client: OpenAI | None = None
         self._model = model
@@ -737,6 +744,7 @@ class OpenAILLMClient:
             timeout=LLM_CLIENT_TIMEOUT_SEC,
             max_retries=OPENAI_SDK_MAX_RETRIES,
             default_headers=self._default_headers,
+            **sdk_http_client_kwargs(getattr(self, "_http_client", None)),
         )
 
     def with_config(self, **_kwargs) -> OpenAILLMClient:

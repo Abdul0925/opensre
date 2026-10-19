@@ -27,6 +27,7 @@ from config.constants.billing import USAGE_SECRET_ENV, WEBAPP_URL_ENV
 from config.constants.hosted_gateway import HOSTED_GATEWAY_LOOPBACK_HOSTS
 from config.constants.llm import OPENAI_API_KEY_ENV, OPENAI_BASE_URL_ENV
 from config.constants.paths import host_home
+from config.credit_attribution import credit_actor_env
 from config.principal import Principal
 from config.secrets.store import (
     delete_secret,
@@ -273,14 +274,22 @@ def account_llm_route() -> AccountLLMRoute | None:
 
 
 def hosted_openai_env() -> dict[str, str] | None:
-    """OpenAI-compatible env for a subprocess on the hosted route, or ``None`` if unsigned."""
+    """OpenAI-compatible env for a subprocess on the hosted route, or ``None`` if unsigned.
+
+    Also names the member the run is spent for, when known, for a child that
+    sends it as the actor header (Codex's ``env_http_headers``).
+    """
     route = account_llm_route()
     if route is None:
         return None
     token = resolve_account_token()
     if not token:
         return None
-    return {OPENAI_API_KEY_ENV: token, OPENAI_BASE_URL_ENV: route.base_url}
+    return {
+        OPENAI_API_KEY_ENV: token,
+        OPENAI_BASE_URL_ENV: route.base_url,
+        **credit_actor_env(),
+    }
 
 
 __all__ = [

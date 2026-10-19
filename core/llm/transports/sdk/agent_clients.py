@@ -58,6 +58,11 @@ from core.llm.transports.sdk.anthropic_cache import (
 from core.llm.transports.sdk.anthropic_cache import (
     tools_with_cache as _anthropic_tools_with_cache,
 )
+from core.llm.transports.sdk.request_headers import (
+    RequestHeaders,
+    http_client_with_request_headers,
+    sdk_http_client_kwargs,
+)
 from core.llm.types import AgentLLMResponse, ModelType, SchemaDescribedTool, ToolCall
 
 logger = logging.getLogger(__name__)
@@ -602,6 +607,7 @@ class OpenAIAgentClient:
         api_key_env: str = "OPENAI_API_KEY",
         api_key_default: str = "",
         credential_resolver: Callable[[str], str] | None = None,
+        request_headers: RequestHeaders | None = None,
     ) -> None:
         from config.llm_credentials import resolve_env_credential
 
@@ -611,6 +617,7 @@ class OpenAIAgentClient:
         self._base_url = base_url
         self._api_key_env = api_key_env
         self._api_key = ""
+        self._http_client = http_client_with_request_headers(request_headers)
         self._client: Any = None
         self._model = model
         self._max_tokens = max_tokens
@@ -636,6 +643,7 @@ class OpenAIAgentClient:
                 base_url=self._base_url,
                 timeout=AGENT_CLIENT_TIMEOUT_SEC,
                 max_retries=OPENAI_SDK_MAX_RETRIES,
+                **sdk_http_client_kwargs(getattr(self, "_http_client", None)),
             )
 
     @property
