@@ -191,12 +191,6 @@ MCP_BY_COMMAND: dict[str, _SlashMcpFields] = {
         "Exit the interactive shell and return to the parent terminal.",
         "User asks to exit, quit, or leave the REPL",
     ),
-    "/fleet": _mcp(
-        "Show and manage the local AI agent fleet (Claude Code, Cursor, Aider, etc.). "
-        "Subcommands include budget, bus, claim, conflicts, kill, release, trace, wait, graph.",
-        "User asks to list, scan, or manage local coding agents",
-        anti_examples=("User asks about remote/hosted agents only",),
-    ),
     "/gateway": _mcp(
         "Control the background OpenSRE gateway daemon (web health app, Telegram chat, "
         "task scheduler). Subcommands: start, stop, status, logs [lines].",
