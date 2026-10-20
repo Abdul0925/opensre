@@ -137,6 +137,11 @@ class SlackTurnOutput:
         self._show_loading()
 
     def _show_loading(self) -> None:
+        if self._loading_stop.is_set():
+            # A stopped or finished turn can still print while it unwinds;
+            # re-showing the status would put Slack's session back to
+            # "processing" under the final reply.
+            return
         setter = getattr(self._client, "set_thread_status", None)
         if not callable(setter):
             return

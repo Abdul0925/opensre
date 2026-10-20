@@ -22,7 +22,10 @@ from gateway.core.storage.events.repository import HandledSlackEventRepository
 from gateway.transports.slack.delivery.approvals import handle_block_actions_payload
 from gateway.transports.slack.delivery.feedback import record_feedback_payload
 from gateway.transports.slack.processing.events import parse_events_api_payload
-from gateway.transports.slack.processing.stop_shortcut import parse_stop_shortcut_payload
+from gateway.transports.slack.processing.stop_requests import (
+    parse_agent_session_stopped_payload,
+    parse_stop_shortcut_payload,
+)
 from gateway.transports.slack.settings import SlackGatewaySettings
 from gateway.transports.slack.turn_stack import SlackTurnStack
 
@@ -97,6 +100,15 @@ def build_socket_mode_listener(
             return
         payload = request.payload
         event_id = str(payload.get("event_id") or "")
+        stop_request = parse_agent_session_stopped_payload(payload)
+        if stop_request is not None:
+            # Slack's native stop button: like the shortcut, on this thread.
+            if event_id and not handled_events.claim(event_id):
+                return
+            stack.dispatcher.stop(stop_request)
+            if event_id:
+                handled_events.confirm(event_id)
+            return
         event_type = str((payload.get("event") or {}).get("type") or "")
         if event_type == _MEMBER_JOINED_CHANNEL_EVENT:
             # Greeting posts a message (network call): hand it to a worker.

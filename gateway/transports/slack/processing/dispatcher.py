@@ -44,7 +44,7 @@ from gateway.transports.slack.processing.security import (
     SlackInboundDecision,
     enforce_inbound_slack_message_security,
 )
-from gateway.transports.slack.processing.stop_shortcut import SlackStopRequest
+from gateway.transports.slack.processing.stop_requests import SlackStopRequest
 from gateway.transports.slack.processing.thread_history import (
     seed_session_from_slack_thread,
     session_needs_thread_seed,
@@ -87,19 +87,26 @@ class SlackTurnDispatcher:
         self._resolver_lock = threading.Lock()
 
     def stop(self, request: SlackStopRequest) -> None:
-        """Stop the turn running in the conversation the Stop shortcut was used in.
+        """Stop the turn running in the conversation a stop button was pressed in.
 
         Call it off the turn executor, like the ``stop`` command: every worker
-        may be busy, and the turn itself holds the conversation lock.
+        may be busy, and the turn itself holds the conversation lock. The
+        stopped turn clears its loading status, which is what ends Slack's
+        "processing" agent session; with nothing running, clear it here.
         """
         try:
             if self._active_cancels.request_stop(request.conversation_key):
                 self._logger.info(
-                    "[slack-gateway] turn stopped from shortcut user=%s channel=%s",
+                    "[slack-gateway] turn stopped from Slack user=%s channel=%s",
                     request.user_id,
                     request.channel_id,
                 )
                 return
+            self._messaging.set_thread_status(
+                channel=request.channel_id,
+                thread_ts=request.thread_ts or request.message_ts,
+                status="",
+            )
             self._messaging.post_ephemeral(
                 channel=request.channel_id,
                 user=request.user_id,
@@ -107,7 +114,7 @@ class SlackTurnDispatcher:
                 thread_ts=request.thread_ts or None,
             )
         except Exception:
-            self._logger.error("[slack-gateway] stop shortcut failed", exc_info=True)
+            self._logger.error("[slack-gateway] stop failed", exc_info=True)
 
     def dispatch(self, inbound: SlackInboundMessage) -> None:
         # /stop must not wait on the per-conversation turn lock.
