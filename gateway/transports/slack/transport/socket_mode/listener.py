@@ -22,6 +22,7 @@ from gateway.core.storage.events.repository import HandledSlackEventRepository
 from gateway.transports.slack.delivery.approvals import handle_block_actions_payload
 from gateway.transports.slack.delivery.feedback import record_feedback_payload
 from gateway.transports.slack.processing.events import parse_events_api_payload
+from gateway.transports.slack.processing.stop_shortcut import parse_stop_shortcut_payload
 from gateway.transports.slack.settings import SlackGatewaySettings
 from gateway.transports.slack.turn_stack import SlackTurnStack
 
@@ -75,6 +76,12 @@ def build_socket_mode_listener(
         # Ack first: Slack redelivers any envelope not acked within 3 seconds.
         client.send_socket_mode_response(SocketModeResponse(envelope_id=request.envelope_id))
         if request.type == _INTERACTIVE_REQUEST_TYPE:
+            stop_request = parse_stop_shortcut_payload(request.payload)
+            if stop_request is not None:
+                # On the listener thread, never the turn executor: the turn
+                # being stopped may hold the last free worker.
+                stack.dispatcher.stop(stop_request)
+                return
             # Approval clicks resolve on the listener thread: turn workers may
             # all be blocked *waiting* on these buttons, so a click must never
             # need a free worker. Feedback clicks share the envelope type.

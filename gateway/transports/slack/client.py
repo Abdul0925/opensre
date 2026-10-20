@@ -47,6 +47,16 @@ class SlackMessagingClient(Protocol):
     ) -> str | None:
         """Post a message and return its ``ts``, or ``None`` on failure."""
 
+    def post_ephemeral(
+        self,
+        *,
+        channel: str,
+        user: str,
+        text: str,
+        thread_ts: str | None = None,
+    ) -> bool:
+        """Show ``text`` to ``user`` alone; return whether Slack accepted it."""
+
     def update_message(
         self,
         *,
@@ -150,6 +160,28 @@ class SlackWebApiClient:
             logger.error("[slack-gateway] chat.postMessage failed: %s", exc.response.get("error"))
             return None
         return str(response.get("ts") or "") or None
+
+    def post_ephemeral(
+        self,
+        *,
+        channel: str,
+        user: str,
+        text: str,
+        thread_ts: str | None = None,
+    ) -> bool:
+        try:
+            self._web_client.chat_postEphemeral(
+                channel=channel,
+                user=user,
+                text=text,
+                thread_ts=thread_ts,
+            )
+        except SlackApiError as exc:
+            logger.warning(
+                "[slack-gateway] chat.postEphemeral failed: %s", exc.response.get("error")
+            )
+            return False
+        return True
 
     def update_message(
         self,

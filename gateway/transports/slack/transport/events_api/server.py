@@ -24,6 +24,7 @@ from http import HTTPStatus
 import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
+from starlette.background import BackgroundTask
 
 from config.constants.gateway import DEFAULT_STOP_TIMEOUT_SECONDS
 from gateway.core.lifecycle.errors import GatewayTransportFailedError
@@ -32,6 +33,10 @@ from gateway.core.storage.events.repository import HandledSlackEventRepository
 from gateway.transports.slack.delivery.approvals import handle_block_actions_payload
 from gateway.transports.slack.delivery.feedback import record_feedback_payload
 from gateway.transports.slack.processing.events import SlackInboundMessage
+from gateway.transports.slack.processing.stop_shortcut import (
+    SlackStopRequest,
+    parse_stop_shortcut_payload,
+)
 from gateway.transports.slack.settings import SlackGatewaySettings
 from gateway.transports.slack.transport.events_api.receiver import (
     SlackHttpStatus,
@@ -42,6 +47,8 @@ from infrastructure.request_body_limit import RequestBodyLimitMiddleware
 
 #: Starts a turn for one inbound message without blocking the request.
 SubmitTurn = Callable[[SlackInboundMessage], None]
+#: Stops the turn a Stop shortcut points at.
+StopTurn = Callable[[SlackStopRequest], None]
 
 
 @dataclass
@@ -104,11 +111,13 @@ def build_slack_http_app(
     handled_events: HandledSlackEventRepository,
     submit_turn: SubmitTurn,
     gate: ListenerGate,
+    stop_turn: StopTurn | None = None,
 ) -> FastAPI:
     """Return the Slack listener app.
 
     ``submit_turn`` takes one :class:`SlackInboundMessage` and starts the turn
-    without blocking — the route must answer Slack first.
+    without blocking — the route must answer Slack first. ``stop_turn`` runs
+    after the answer; without it the Stop shortcut is ignored.
     """
     app = FastAPI()
     # Slack's signature covers the raw body, so both routes must read it before
@@ -180,6 +189,15 @@ def build_slack_http_app(
             logger.warning("slack interactivity rejected: %s", outcome.reason)
             return JSONResponse({"error": "unauthorized"}, status_code=HTTPStatus.UNAUTHORIZED)
         if outcome.payload is not None:
+            stop_request = parse_stop_shortcut_payload(outcome.payload)
+            if stop_request is not None:
+                # Stopping finalizes the turn's reply over the Web API, which
+                # can outlast Slack's three seconds: answer first. Never the
+                # turn executor — the turn being stopped may hold the last worker.
+                background = (
+                    BackgroundTask(stop_turn, stop_request) if stop_turn is not None else None
+                )
+                return Response(status_code=HTTPStatus.OK, background=background)
             # Resolved on the request thread, never the turn executor: workers
             # may all be blocked *waiting* on these very buttons, so a click
             # must never need a free worker to be recorded.

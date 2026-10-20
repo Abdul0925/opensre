@@ -50,13 +50,23 @@ class SlackInboundMessage:
 
     @property
     def conversation_key(self) -> str:
-        """Session binding key: one per channel thread, one per DM.
+        """Session binding key: one per channel thread, one per DM."""
+        return slack_conversation_key(
+            team_id=self.team_id,
+            channel_id=self.channel_id,
+            thread_ts=self.thread_ts,
+            is_dm=self.is_dm,
+        )
 
-        ``thread_ts`` stays the reply target in a DM (Slack streaming needs a
-        thread), but it must not split the DM into one session per message.
-        """
-        segment = _DM_CONVERSATION_SEGMENT if self.is_dm else self.thread_ts
-        return f"{self.team_id}:{self.channel_id}:{segment}"
+
+def slack_conversation_key(*, team_id: str, channel_id: str, thread_ts: str, is_dm: bool) -> str:
+    """Session binding key: one per channel thread, one per DM.
+
+    ``thread_ts`` stays the reply target in a DM (Slack streaming needs a
+    thread), but it must not split the DM into one session per message.
+    """
+    segment = _DM_CONVERSATION_SEGMENT if is_dm else thread_ts
+    return f"{team_id}:{channel_id}:{segment}"
 
 
 def parse_events_api_payload(payload: Mapping[str, Any]) -> SlackInboundMessage | None:
