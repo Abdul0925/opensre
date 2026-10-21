@@ -198,7 +198,7 @@ def test_list_pods_run_happy_path(monkeypatch) -> None:  # type: ignore[no-untyp
     tool = KubernetesListPodsTool()
 
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
@@ -230,7 +230,7 @@ def test_list_pods_run_returns_unavailable_on_api_error(monkeypatch) -> None:  #
     mock_client._networking_v1 = MagicMock()
 
     tool = KubernetesListPodsTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
 
     assert result["available"] is False
@@ -257,7 +257,7 @@ def test_get_pod_logs_run_happy_path(monkeypatch) -> None:  # type: ignore[no-un
     mock_client._networking_v1 = MagicMock()
 
     tool = KubernetesGetPodLogsTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(
             kubeconfig=_MINIMAL_KUBECONFIG,
             pod_name="web-abc",
@@ -311,7 +311,7 @@ def test_list_deployments_run_happy_path(monkeypatch) -> None:  # type: ignore[n
     mock_client._networking_v1 = MagicMock()
 
     tool = KubernetesListDeploymentsTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
 
     assert result["available"] is True
@@ -356,7 +356,7 @@ def test_get_events_run_happy_path(monkeypatch) -> None:  # type: ignore[no-unty
     mock_client._networking_v1 = MagicMock()
 
     tool = KubernetesGetEventsTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
 
     assert result["available"] is True
@@ -406,7 +406,7 @@ def test_describe_pod_run_happy_path() -> None:
 
     tool = KubernetesDescribePodTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, pod_name="web-abc", namespace="default")
@@ -440,7 +440,7 @@ def test_describe_pod_run_includes_valuefrom_env_names_without_values() -> None:
 
     tool = KubernetesDescribePodTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, pod_name="web-abc", namespace="default")
@@ -464,7 +464,7 @@ def test_describe_pod_run_strips_last_applied_config_annotation() -> None:
 
     tool = KubernetesDescribePodTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, pod_name="web-abc", namespace="default")
@@ -503,7 +503,7 @@ def test_list_nodes_run_happy_path() -> None:
 
     tool = KubernetesListNodesTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG)
@@ -556,7 +556,7 @@ def test_list_services_run_happy_path() -> None:
 
     tool = KubernetesListServicesTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
@@ -601,7 +601,7 @@ def test_list_statefulsets_run_happy_path() -> None:
 
     tool = KubernetesListStatefulSetsTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_apps(mock_apps),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
@@ -647,7 +647,7 @@ def test_list_daemonsets_run_happy_path() -> None:
 
     tool = KubernetesListDaemonSetsTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_apps(mock_apps),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
@@ -700,7 +700,7 @@ def test_list_ingresses_run_happy_path() -> None:
 
     tool = KubernetesListIngressesTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_networking(mock_networking),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
@@ -745,7 +745,7 @@ def test_list_configmaps_run_happy_path() -> None:
 
     tool = KubernetesListConfigMapsTool()
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(kubeconfig=_MINIMAL_KUBECONFIG, namespace="default")
@@ -790,7 +790,7 @@ def test_get_resource_run_happy_path() -> None:
     }
 
     tool = KubernetesGetResourceTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(
             kubeconfig=_MINIMAL_KUBECONFIG,
             resource_type="deployment",
@@ -831,7 +831,7 @@ def test_get_resource_run_strips_last_applied_config_annotation() -> None:
     }
 
     tool = KubernetesGetResourceTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(
             kubeconfig=_MINIMAL_KUBECONFIG,
             resource_type="deployment",
@@ -855,7 +855,7 @@ def test_get_resource_run_unsupported_type() -> None:
     mock_client._networking_v1 = MagicMock()
 
     tool = KubernetesGetResourceTool()
-    with patch("integrations.kubernetes.tools._make_client", return_value=mock_client):
+    with patch("integrations.kubernetes.tools._shared.make_client", return_value=mock_client):
         result = tool.run(
             kubeconfig=_MINIMAL_KUBECONFIG, resource_type="foobar", name="x", namespace="default"
         )
@@ -941,7 +941,7 @@ def test_namespace_outside_allowlist_is_rejected_before_connecting(
     tool_cls: Any, required: dict[str, Any]
 ) -> None:
     tool = tool_cls()
-    with patch("integrations.kubernetes.tools._make_client") as make_client:
+    with patch("integrations.kubernetes.tools._shared.make_client") as make_client:
         result = tool.run(
             kubeconfig=_MINIMAL_KUBECONFIG,
             namespace="kube-system",
@@ -962,7 +962,7 @@ def test_get_resource_skips_allowlist_for_cluster_scoped_types(resource_type: st
     mock_core = MagicMock()
     mock_core.read_node.return_value.to_dict.return_value = {"metadata": {"name": "node-1"}}
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ) as make_client:
         KubernetesGetResourceTool().run(
@@ -977,7 +977,7 @@ def test_get_resource_skips_allowlist_for_cluster_scoped_types(resource_type: st
 
 
 def test_get_resource_enforces_allowlist_for_namespaced_types() -> None:
-    with patch("integrations.kubernetes.tools._make_client") as make_client:
+    with patch("integrations.kubernetes.tools._shared.make_client") as make_client:
         result = KubernetesGetResourceTool().run(
             kubeconfig=_MINIMAL_KUBECONFIG,
             resource_type="deployments",
@@ -998,7 +998,7 @@ def _run_list_pods(sources: dict[str, Any], model_input: dict[str, Any]) -> tupl
     mock_core = MagicMock()
     mock_core.list_namespaced_pod.return_value = mock_pod_list
     with patch(
-        "integrations.kubernetes.tools._make_client",
+        "integrations.kubernetes.tools._shared.make_client",
         return_value=_make_client_with_core(mock_core),
     ):
         result = tool.run(**kwargs)
