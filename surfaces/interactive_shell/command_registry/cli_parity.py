@@ -361,6 +361,13 @@ def run_cli_command(
     if session is not None and not should_capture:
         set_turn_outcome_hint(session, format_wizard_cli_outcome(args, exit_code=exit_code))
     ok = _cli_command_succeeded(exit_code)
+    if ok and args[:2] == ["auth", "login"] and not headless:
+        from core.llm.factory import reset_llm_clients
+        from surfaces.shared.llm_setup.env_sync import reload_provider_selection
+
+        if "--no-set-provider" not in args:
+            reload_provider_selection()
+        reset_llm_clients()
     if session is not None and not ok and not backgrounded:
         session.mark_latest(ok=False, kind="slash")
     # A backgrounded tick already recorded ``still_running``. Returning True
@@ -441,12 +448,22 @@ def _cmd_account(session: Session, console: Console, args: list[str]) -> bool:  
 
 
 def _cmd_auth(session: Session, console: Console, args: list[str]) -> bool:  # noqa: ARG001
+    if args == ["login"]:
+        return _cmd_login(session, console, [])
     # ``login`` (and provider flows) prompt on the real TTY; status/logout print.
     capture_output = not args or args[0].lower() in {"status", "logout"}
     return run_cli_command(console, ["auth", *args], capture_output=capture_output, session=session)
 
 
 def _cmd_login(session: Session, console: Console, args: list[str]) -> bool:  # noqa: ARG001
+    # Show metadata-only choices before paying the child CLI's startup cost.
+    if not args and session_terminal(session) is not None:
+        from surfaces.shared.llm_setup.auth_menu import prompt_auth_provider
+
+        profile = prompt_auth_provider()
+        if profile is None:
+            return True
+        args = [profile.name]
     # Interactive provider login prompts on the real TTY.
     return run_cli_command(console, ["auth", "login", *args], capture_output=False, session=session)
 
@@ -582,13 +599,19 @@ COMMANDS: list[SlashCommand] = [
         "Log in to LLM providers and inspect local auth state.",
         _cmd_auth,
         first_arg_completions=CLI_COMMAND_CHOICES[("/auth",)],
-        usage=("/auth", "/auth status", "/auth login deepseek", "/auth logout deepseek"),
+        usage=(
+            "/auth",
+            "/auth status",
+            "/auth login chatgpt",
+            "/auth login deepseek",
+            "/auth logout deepseek",
+        ),
     ),
     SlashCommand(
         "/login",
         "Shortcut for LLM provider login.",
         _cmd_login,
-        usage=("/login", "/login chatgpt", "/login claude", "/login deepseek"),
+        usage=("/login", "/login chatgpt", "/login anthropic", "/login deepseek"),
     ),
     SlashCommand(
         "/logout",

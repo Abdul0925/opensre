@@ -1,10 +1,11 @@
-"""Provider metadata for browser-assisted LLM auth setup (API keys only)."""
+"""Separate API-key and subscription authentication profiles."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
 
+from config.llm_auth.subscriptions import SUBSCRIPTION_BY_VALUE
 from surfaces.shared.llm_setup.catalog import (
     PROVIDER_BY_VALUE,
     SUPPORTED_PROVIDERS,
@@ -12,7 +13,7 @@ from surfaces.shared.llm_setup.catalog import (
     WizardCredentialKind,
 )
 
-AuthKind = Literal["api_key"]
+AuthKind = Literal["api_key", "subscription"]
 
 
 @dataclass(frozen=True)
@@ -65,9 +66,23 @@ def _api_key_profiles() -> tuple[ProviderAuthProfile, ...]:
     return tuple(profiles)
 
 
-def iter_auth_profiles() -> tuple[ProviderAuthProfile, ...]:
+def iter_auth_profiles(kind: AuthKind | None = None) -> tuple[ProviderAuthProfile, ...]:
     """Return all supported auth setup paths."""
-    return _api_key_profiles()
+    profiles = (
+        *_api_key_profiles(),
+        *(
+            ProviderAuthProfile(
+                name=provider.value,
+                provider_value=provider.value,
+                label=provider.label,
+                kind="subscription",
+                auth_hint=SUBSCRIPTION_BY_VALUE[provider.value].auth_hint,
+            )
+            for provider in SUPPORTED_PROVIDERS
+            if provider.credential_kind == WizardCredentialKind.SUBSCRIPTION
+        ),
+    )
+    return tuple(profile for profile in profiles if kind is None or profile.kind == kind)
 
 
 def _normalize_auth_name(name: str) -> str:

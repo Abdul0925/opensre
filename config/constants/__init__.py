@@ -288,6 +288,30 @@ if TYPE_CHECKING:
     from config.constants.capabilities import (
         SCHEDULER_HOST_IN_PROCESS as SCHEDULER_HOST_IN_PROCESS,
     )
+    from config.constants.chatgpt import (
+        CHATGPT_AUTHORIZE_URL as CHATGPT_AUTHORIZE_URL,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_CALLBACK_PATH as CHATGPT_CALLBACK_PATH,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_DISCOVERY_URL as CHATGPT_DISCOVERY_URL,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_DYNAMIC_CLIENT as CHATGPT_DYNAMIC_CLIENT,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_ISSUER as CHATGPT_ISSUER,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_RESOURCE as CHATGPT_RESOURCE,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_SCOPES as CHATGPT_SCOPES,
+    )
+    from config.constants.chatgpt import (
+        CHATGPT_TOKEN_URL as CHATGPT_TOKEN_URL,
+    )
     from config.constants.ci_fixes import (
         CI_FIX_COUNT_LABEL as CI_FIX_COUNT_LABEL,
     )
@@ -618,6 +642,30 @@ if TYPE_CHECKING:
     from config.constants.grafana import (
         GRAFANA_VERIFY_SSL_ENV as GRAFANA_VERIFY_SSL_ENV,
     )
+    from config.constants.grok import (
+        GROK_DEVICE_GRANT as GROK_DEVICE_GRANT,
+    )
+    from config.constants.grok import (
+        GROK_DISCOVERY_URL as GROK_DISCOVERY_URL,
+    )
+    from config.constants.grok import (
+        GROK_ISSUER as GROK_ISSUER,
+    )
+    from config.constants.grok import (
+        GROK_OAUTH_CLIENT_ID as GROK_OAUTH_CLIENT_ID,
+    )
+    from config.constants.grok import (
+        GROK_OAUTH_CLIENT_ID_ENV as GROK_OAUTH_CLIENT_ID_ENV,
+    )
+    from config.constants.grok import (
+        GROK_OAUTH_REFERRER as GROK_OAUTH_REFERRER,
+    )
+    from config.constants.grok import (
+        GROK_RESOURCE as GROK_RESOURCE,
+    )
+    from config.constants.grok import (
+        GROK_SCOPES as GROK_SCOPES,
+    )
     from config.constants.groundcover import (
         GROUNDCOVER_API_KEY_ENV as GROUNDCOVER_API_KEY_ENV,
     )
@@ -769,6 +817,12 @@ if TYPE_CHECKING:
         KUBECONFIG_PATH_ENV as KUBECONFIG_PATH_ENV,
     )
     from config.constants.llm import (
+        ANTHROPIC_DEFER_LOADING_KEY as ANTHROPIC_DEFER_LOADING_KEY,
+    )
+    from config.constants.llm import (
+        ANTHROPIC_THINKING_BINDING_KEY as ANTHROPIC_THINKING_BINDING_KEY,
+    )
+    from config.constants.llm import (
         AZURE_OPENAI_API_KEY_ENV as AZURE_OPENAI_API_KEY_ENV,
     )
     from config.constants.llm import (
@@ -796,10 +850,16 @@ if TYPE_CHECKING:
         OPENAI_PROMPT_CACHE_KEY_PREFIX as OPENAI_PROMPT_CACHE_KEY_PREFIX,
     )
     from config.constants.llm import (
+        OPENSRE_LLM_CONNECTION_ENV as OPENSRE_LLM_CONNECTION_ENV,
+    )
+    from config.constants.llm import (
         OPENSRE_LLM_NATIVE_STRUCTURED_OUTPUT_ENV as OPENSRE_LLM_NATIVE_STRUCTURED_OUTPUT_ENV,
     )
     from config.constants.llm import (
         OPENSRE_REACT_GOAL_LLM_REVIEW_ENV as OPENSRE_REACT_GOAL_LLM_REVIEW_ENV,
+    )
+    from config.constants.llm import (
+        OPENSRE_SUBSCRIPTION_AUTH_DIR_ENV as OPENSRE_SUBSCRIPTION_AUTH_DIR_ENV,
     )
     from config.constants.mariadb import (
         MARIADB_DATABASE_ENV as MARIADB_DATABASE_ENV,
@@ -1544,6 +1604,12 @@ if TYPE_CHECKING:
         MODEL_ONLY_PRESENTATION_KEY as MODEL_ONLY_PRESENTATION_KEY,
     )
     from config.constants.tool_discovery import (
+        REPLAY_WITH_HISTORY_KEY as REPLAY_WITH_HISTORY_KEY,
+    )
+    from config.constants.tool_discovery import (
+        REQUEST_SCOPED_RESULTS_METADATA_KEY as REQUEST_SCOPED_RESULTS_METADATA_KEY,
+    )
+    from config.constants.tool_discovery import (
         SESSION_GOAL_CONTROL_TOOL_NAMES as SESSION_GOAL_CONTROL_TOOL_NAMES,
     )
     from config.constants.tool_discovery import (
@@ -1568,6 +1634,9 @@ if TYPE_CHECKING:
         TOOL_FAILURE_STATE_KEY as TOOL_FAILURE_STATE_KEY,
     )
     from config.constants.tool_discovery import TOOL_FAILURE_STATES as TOOL_FAILURE_STATES
+    from config.constants.tool_discovery import (
+        TOOL_SEARCH_MATCHES_KEY as TOOL_SEARCH_MATCHES_KEY,
+    )
     from config.constants.tool_discovery import (
         TOOL_SEARCH_MAX_RESULTS as TOOL_SEARCH_MAX_RESULTS,
     )
@@ -1598,6 +1667,9 @@ if TYPE_CHECKING:
     )
     from config.constants.tooling import (
         DEFAULT_APPROVAL_EXPIRY_SECONDS as DEFAULT_APPROVAL_EXPIRY_SECONDS,
+    )
+    from config.constants.tooling import (
+        MAX_CONCURRENT_TOOL_CALLS as MAX_CONCURRENT_TOOL_CALLS,
     )
     from config.constants.tooling import (
         TOOL_PREFETCH_MAX_ENTRIES as TOOL_PREFETCH_MAX_ENTRIES,

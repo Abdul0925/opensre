@@ -28,6 +28,10 @@
 </p>
 
 <p align="center">
+  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
   <strong>
     <a href="https://www.opensre.com/docs/getting-started/quickstart">Quickstart</a> ·
     <a href="https://www.opensre.com/docs">Docs</a> ·
@@ -90,7 +94,7 @@ For supported platforms and troubleshooting, see [Install locally](https://www.o
 - [Deployment](#deployment)
 - [How OpenSRE Works](#how-opensre-works)
 - [Capabilities & integrations](#capabilities--integrations)
-- [Contributing & development](#contributing--development)
+- [Integrations](#integrations)
 - [Security](#security)
 - [Telemetry](#telemetry)
 - [License](#license)

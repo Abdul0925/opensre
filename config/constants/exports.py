@@ -7,6 +7,22 @@ from config.package_exports import bind_package_exports
 # Re-exported name -> leaf module. Importing this package must not load
 # those modules; ``__getattr__`` loads one leaf the first time a name is used.
 EXPORTS: dict[str, str] = {
+    "GROK_OAUTH_CLIENT_ID": "grok",
+    "GROK_OAUTH_REFERRER": "grok",
+    "GROK_OAUTH_CLIENT_ID_ENV": "grok",
+    "GROK_ISSUER": "grok",
+    "GROK_DISCOVERY_URL": "grok",
+    "GROK_RESOURCE": "grok",
+    "GROK_SCOPES": "grok",
+    "GROK_DEVICE_GRANT": "grok",
+    "CHATGPT_ISSUER": "chatgpt",
+    "CHATGPT_AUTHORIZE_URL": "chatgpt",
+    "CHATGPT_TOKEN_URL": "chatgpt",
+    "CHATGPT_DISCOVERY_URL": "chatgpt",
+    "CHATGPT_RESOURCE": "chatgpt",
+    "CHATGPT_DYNAMIC_CLIENT": "chatgpt",
+    "CHATGPT_SCOPES": "chatgpt",
+    "CHATGPT_CALLBACK_PATH": "chatgpt",
     "TELEMETRY_CLICKHOUSE_PASSWORD_ENV": "telemetry",
     "TELEMETRY_MODEL_TIMEOUT_SECONDS": "telemetry",
     "TELEMETRY_REPORT_MAX_CHARS": "telemetry",
@@ -335,12 +351,16 @@ EXPORTS: dict[str, str] = {
     "KUBECONFIG_NAMESPACES_ENV": "kubernetes",
     "KUBECONFIG_PATH_ENV": "kubernetes",
     # llm
+    "ANTHROPIC_DEFER_LOADING_KEY": "llm",
+    "ANTHROPIC_THINKING_BINDING_KEY": "llm",
     "AZURE_OPENAI_API_KEY_ENV": "llm",
     "OPENAI_API_KEY_ENV": "llm",
     "OPENAI_BASE_URL_ENV": "llm",
     "AZURE_OPENAI_API_VERSION_ENV": "llm",
     "AZURE_OPENAI_BASE_URL_ENV": "llm",
     "LLM_AUTH_METHOD_ENV": "llm",
+    "OPENSRE_LLM_CONNECTION_ENV": "llm",
+    "OPENSRE_SUBSCRIPTION_AUTH_DIR_ENV": "llm",
     "LLM_PROVIDER_ENV": "llm",
     "OPENSRE_LLM_NATIVE_STRUCTURED_OUTPUT_ENV": "llm",
     "OPENSRE_REACT_GOAL_LLM_REVIEW_ENV": "llm",
@@ -529,6 +549,8 @@ EXPORTS: dict[str, str] = {
     # runbooks
     "RUNBOOK_CONTENT_MAX_CHARS": "runbooks",
     "RUNBOOK_MANIFEST_MAX_CHARS": "runbooks",
+    # runtime_events
+    "PARTIAL_MESSAGE_KEY": "runtime_events",
     # scheduler
     "WEEKDAY_CRON_FIELD": "scheduler",
     "NON_RETRYABLE_WORK_ERROR_KINDS": "scheduler",
@@ -617,6 +639,7 @@ EXPORTS: dict[str, str] = {
     # tooling
     "CI_ANALYSIS_PREFETCH_MAX_AGE_SECONDS": "tooling",
     "DEFAULT_APPROVAL_EXPIRY_SECONDS": "tooling",
+    "MAX_CONCURRENT_TOOL_CALLS": "tooling",
     "TOOL_PREFETCH_MAX_ENTRIES": "tooling",
     "WORKSPACE_SCAN_PREFETCH_MAX_AGE_SECONDS": "tooling",
     "ToolBlockedBy": "tooling",
@@ -629,6 +652,8 @@ EXPORTS: dict[str, str] = {
     "INITIAL_TOOL_SCHEMA_TOKEN_LIMIT": "tool_discovery",
     "MAX_STAGNANT_DISCOVERY_ITERATIONS": "tool_discovery",
     "MODEL_ONLY_PRESENTATION_KEY": "tool_discovery",
+    "REPLAY_WITH_HISTORY_KEY": "tool_discovery",
+    "REQUEST_SCOPED_RESULTS_METADATA_KEY": "tool_discovery",
     "SESSION_GOAL_CONTROL_TOOL_NAMES": "tool_discovery",
     "TOOL_DISCOVERY_STATE_DENIED": "tool_discovery",
     "TOOL_DISCOVERY_STATE_MATCHED": "tool_discovery",
@@ -638,6 +663,7 @@ EXPORTS: dict[str, str] = {
     "TOOL_DISCOVERY_STATE_TRANSPORT_FAILURE": "tool_discovery",
     "TOOL_FAILURE_STATE_KEY": "tool_discovery",
     "TOOL_FAILURE_STATES": "tool_discovery",
+    "TOOL_SEARCH_MATCHES_KEY": "tool_discovery",
     "TOOL_SEARCH_MAX_RESULTS": "tool_discovery",
     "TOOL_SEARCH_NAME": "tool_discovery",
     # tracer
